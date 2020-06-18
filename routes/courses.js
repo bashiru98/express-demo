@@ -1,71 +1,67 @@
-const express =require('express');
-
+const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
-const Joi =require('joi');
+const Joi = require('joi');
+const { Course, validate } = require('../modules/courses');
 
-const courses = [
-    {id:1, name: 'course1'},
-    {id:2, name: 'course2'},
-    {id:3, name: 'course3'},
-    {id:4, name: 'course4'}
-];
-router.get('/', (req, res) => {
-    res.send(courses);
-});
-
-router.get('/:id', (req, res) => {
-    const courseLocation = courses.find(c => c.id === parseInt(req.params.id));
-    if (!courseLocation) return res.status(404).send('course not found');
-    res.send(courseLocation);
-});
-router.post('/', (req,res) => {
-    const {error} = validateCourse(req.body);
-
-    if (error) 
-        return res.status(400).send(error.details[0].message);
-
-    const course = {
-        id: courses.length + 1,
-        name: req.body.name
-    };
-    courses.push(course);
+router.get('/', async (req, res) => {
+    const course = await Course.find().select('name');
     res.send(course);
 });
 
-router.put('/:id', (req, res) => {
-    const courseLocation = courses.find(c => c.id === parseInt(req.params.id));
-    if (!courseLocation) return res.status(404).send('course not found');
+router.get('/:id', async (req, res) => {
+    const course = await Course.findById(req.params.id)
+    // const courseLocation = courses.find(c => c.id === parseInt(req.params.id));
+    if (!course) return res.status(404).send('course not found');
+    res.send(course);
+});
+router.post('/', async (req, res) => {
+    const { error } = validate(req.body);
 
-    const {error} = validateCourse(req.body);
-
-
-    if (error) 
+    if (error)
         return res.status(400).send(error.details[0].message);
-       
-    courseLocation.name = req.body.name;
-    res.send(courseLocation);
+    let course = await new Course({ name: req.body.name });
+    course = await course.save();
+
+    // const course = {
+    //     id: courses.length + 1,
+    //     name: req.body.name
+    // };
+    // courses.push(course);
+    res.send(course);
+});
+
+router.put('/:id', async (req, res) => {
+    const { error } = validate(req.body);
+
+
+    if (error)
+        return res.status(400).send(error.details[0].message);
+    const course = await Course.findByIdAndUpdate(req.params.id, { name: req.body.name }, {
+        new: true
+    })
+    // const courseLocation = courses.find(c => c.id === parseInt(req.params.id));
+    if (!course) return res.status(404).send('course not found');
+    res.send(course);
+
+
+    // courseLocation.name = req.body.name;
 
 
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
+    const course = await Course.findByIdAndDelete(req.params.id)
 
-    const courseLocation = courses.find(c => c.id === parseInt(req.params.id));
-    if (!courseLocation) return res.status(404).send('course not found');
+    // const courseLocation = courses.find(c => c.id === parseInt(req.params.id));
+    if (!course) return res.status(404).send('course not found');
 
-    const index =courses.indexOf(courseLocation);
-    courses.splice(index,1);
-    res.send(courseLocation);
+    // const index = courses.indexOf(courseLocation);
+    // courses.splice(index, 1);
+    res.send(course);
 
 })
 
-function validateCourse (courseLocation) {
-    const schema = {
-        name: Joi.string().min(3).required()
-    };
-   return Joi.validate(courseLocation, schema);
-
-}
 
 
-module.exports =router;
+module.exports = router;
